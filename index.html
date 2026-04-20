@@ -516,7 +516,7 @@ body.readonly .icon-btn{pointer-events:none;opacity:.4}
 /* ── Tooltip ── */
 .tip-wrap{position:relative;display:inline-flex;align-items:center;margin-left:5px;cursor:help}
 .tip-icon{width:15px;height:15px;border-radius:50%;background:var(--purple-bg);border:1px solid var(--purple);color:var(--purple);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font);line-height:1}
-.tip-box{display:none;position:fixed;width:240px;background:#1a1a18;color:#fff;font-size:11px;line-height:1.6;padding:10px 12px;border-radius:9px;z-index:9999;letter-spacing:0.2px;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.tip-box{display:none;visibility:hidden;opacity:0;position:fixed;width:240px;background:#1a1a18;color:#fff;font-size:11px;line-height:1.6;padding:10px 12px;border-radius:9px;z-index:9999;letter-spacing:0.2px;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:opacity .12s}
 .tip-box::after{content:'';position:absolute;top:100%;left:16px;border:5px solid transparent;border-top-color:#1a1a18}
 /* tip position set by JS */
 
@@ -578,7 +578,7 @@ button:has(.vat-btn) + button:hover{opacity:.9;transform:scale(.98)}
 .chart-grid-2col .sc-body{overflow:visible}
 
 /* pnl-row tip 정렬 */
-.pnl-row span{display:flex;align-items:center;flex-wrap:nowrap}
+.pnl-row>span{display:flex;align-items:center;flex-wrap:nowrap;gap:3px}
 
 /* 모바일 kpi-sticky 간소화 */
 @media(max-width:640px){
@@ -973,7 +973,7 @@ const GCOLS={S:'#A32D2D',A:'#854F0B',B:'#185FA5',C:'#3B6D11'};
 function tip(text){
   return `<span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-box">${text}</span></span>`;
 }
-const OCATS=[{id:'contents',label:'콘텐츠',color:'#534AB7'},{id:'hardware',label:'하드웨어',color:'#185FA5'},{id:'interior',label:'인테리어',color:'#0F6E56'},{id:'construct',label:'건축/시공',color:'#993C1D'},{id:'direct',label:'직접경비',color:'#854F0B'}];
+const OCATS=[{id:'contents',label:'콘텐츠',color:'#534AB7'},{id:'hardware',label:'하드웨어',color:'#185FA5'},{id:'interior',label:'인테리어',color:'#0F6E56'},{id:'construct',label:'건축/시공',color:'#993C1D'},{id:'system',label:'시스템',color:'#0F6E8A'},{id:'dev',label:'개발',color:'#6B3FA0'},{id:'direct',label:'직접경비',color:'#854F0B'}];
 const SC_DEF=[{key:'worst',label:'Worst',color:'#A32D2D'},{key:'avg',label:'Average',color:'#854F0B'},{key:'best',label:'Best',color:'#3B6D11'}];
 const DAILY_DEF={S:568663,A:427566,B:336666,C:302999};
 const PNL_DEFS=[
@@ -1031,9 +1031,24 @@ function doLogout(){
   document.getElementById('login-err').classList.remove('show');
 }
 
+
+function normalizeOutsData(){
+  const validCatIds=OCATS.map(c=>c.id);
+  S.labor=S.labor.map(r=>({...r,id:uid()}));
+  S.outs=S.outs.map(r=>({
+    ...r,
+    id:uid(),
+    catId:validCatIds.includes(r.catId)?r.catId:'contents',
+    amount:Math.max(0,parseFloat(r.amount)||0),
+    vatIncl:!!r.vatIncl,
+  }));
+  saveKey('labor');saveKey('outs');
+}
+
 function enterApp(){
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('app').classList.add('active');
+  normalizeOutsData();
   const nameEl=document.getElementById('tb-user-name');
   if(nameEl) nameEl.textContent=CURRENT_USER?CURRENT_USER.name+'님 ('+CURRENT_USER.role+')':'열람 중';
   buildLeft();buildRight();bindActionBar();
@@ -1492,7 +1507,8 @@ function buildLeft(){
   const res=compute(S.bid);
   el.innerHTML=`
     <div class="sc">
-      <div class="sc-head clickable" onclick="toggleAcc('order')" style="display:flex;align-items:center;justify-content:space-between"><span class="sc-title">발주 정보</span><span id="acc-arr-order" style="font-size:11px;color:var(--hint)">${UI.acOpen.order?'▲':'▼'}</span></div>
+      <div class="sc-head clickable" onclick=\"toggleAcc('order',event)\" style="display:flex;align-items:center;justify-content:space-between"><span class="sc-title">발주 정보</span><span id="acc-arr-order" style="font-size:11px;color:var(--hint)">${UI.acOpen.order?'▲':'▼'}</span></div>
+      <div id="acc-body-order" style="display:${UI.acOpen.order?'block':'none'}">
       <div class="sc-body">
         <div style="margin-bottom:13px">
           <label class="lbl" for="inp_project">프로젝트명</label>
@@ -1527,6 +1543,7 @@ function buildLeft(){
         ${makeDualHTML({id:'bid',label:'현재 투찰율',value:S.bid,min:50,max:100,step:0.01,dec:2,color:'#185FA5'})}
         ${makeDualHTML({id:'minBid',label:'최소 입찰율 (하한)',value:S.minBid,min:50,max:100,step:0.01,dec:2,color:'#534AB7'})}
       </div>
+      </div><!-- /acc-body-order -->
     </div>
 
     <div class="sc" id="param_card">
@@ -1567,7 +1584,7 @@ function buildLeft(){
     </div>
 
     <div class="sc">
-      <div class="sc-head clickable" onclick="toggleAcc('labor')" style="display:flex;align-items:center;justify-content:space-between">
+      <div class="sc-head clickable" onclick=\"toggleAcc('labor',event)\" style="display:flex;align-items:center;justify-content:space-between">
         <span class="sc-title" style="display:flex;align-items:center;gap:3px">투입 인력 ${tip('등급별 M/M(man-month) × 인원 × 투입월수. 특급·고급·중급·초급 등급은 KOSA 기준 자격요건을 따릅니다.')}</span>
         <div style="display:flex;align-items:center;gap:9px">
           <span id="lbl_labor" style="font-size:13px;color:var(--red);font-weight:700;letter-spacing:-0.3px">${fmtW(res.lc)}</span>
@@ -1601,7 +1618,7 @@ function buildLeft(){
     </div>
 
     <div class="sc">
-      <div class="sc-head clickable" onclick="toggleAcc('outs')" style="display:flex;align-items:center;justify-content:space-between">
+      <div class="sc-head clickable" onclick=\"toggleAcc('outs',event)\" style="display:flex;align-items:center;justify-content:space-between">
         <span class="sc-title" style="display:flex;align-items:center;gap:3px">외주비 / 직접경비 ${tip('외주 용역비, 콘텐츠·하드웨어·인테리어 등 직접 지출 비용. 직접경비는 서버/기타와 함께 손익계산서 서버/직접경비 항목에 반영됩니다.')}</span>
         <div style="display:flex;align-items:center;gap:9px">
           <span id="lbl_outs" style="font-size:13px;color:var(--purple);font-weight:700;letter-spacing:-0.3px">공급가액 ${fmtW(res.os)}</span>
@@ -1626,10 +1643,11 @@ function buildLeft(){
       </div><!-- /acc-body-outs -->
 
     <div class="sc">
-      <div class="sc-head clickable" onclick="toggleAcc('indr')" style="display:flex;align-items:center;justify-content:space-between"><span class="sc-title" style="display:flex;align-items:center;gap:3px">간접비율 ${tip('공헌이익에서 차감되는 사업 간접비. 영업비, 일반관리비 등 고정비 충당 비율. 통상 5~15% 적용.')}</span><span id="acc-arr-indr" style="font-size:11px;color:var(--hint)">${UI.acOpen.indr?'▲':'▼'}</span></div>
+      <div class="sc-head clickable" onclick=\"toggleAcc('indr',event)\" style="display:flex;align-items:center;justify-content:space-between"><span class="sc-title" style="display:flex;align-items:center;gap:3px">간접비율 ${tip('공헌이익에서 차감되는 사업 간접비. 영업비, 일반관리비 등 고정비 충당 비율. 통상 5~15% 적용.')}</span><span id="acc-arr-indr" style="font-size:11px;color:var(--hint)">${UI.acOpen.indr?'▲':'▼'}</span></div>
+      <div id="acc-body-indr" style="display:${UI.acOpen.indr?'block':'none'}">
       <div class="sc-body">
         ${makeDualHTML({id:'indr',label:'사업 간접비율',value:S.indr,min:0,max:30,step:1,dec:0,hint:'순매출액 대비',color:'#0F6E56'})}
-
+      </div>
       </div>
     </div>
 
@@ -1642,7 +1660,9 @@ function buildLeft(){
 }
 
 
-function toggleAcc(key){
+function toggleAcc(key,e){
+  // 버튼/input/select 클릭은 아코디언 토글 무시
+  if(e&&e.target&&['BUTTON','INPUT','SELECT','TEXTAREA','A'].includes(e.target.tagName))return;
   UI.acOpen[key]=!UI.acOpen[key];
   const body=document.getElementById('acc-body-'+key);
   const arr=document.getElementById('acc-arr-'+key);
@@ -1724,7 +1744,7 @@ function buildOutsHTML(){
           <span class="money-unit">원</span>
         </div>
         <button class="vat-btn${row.vatIncl?' on':''}" data-vat="${row.id}">${row.vatIncl?'✓ VAT포함':'VAT별도'}</button>
-        <button onclick="onCostChange();const b=this;b.textContent='✓';b.style.background='var(--kpi-green)';setTimeout(()=>{b.textContent='적용';b.style.background='var(--purple)';},1200)" style="padding:3px 9px;font-size:11px;font-weight:600;border:none;border-radius:5px;background:var(--purple);color:#fff;cursor:pointer;font-family:var(--font);flex-shrink:0">적용</button>
+        <button onclick="refreshOutsList();onCostChange();const b=this;b.textContent='✓';b.style.background='var(--kpi-green)';setTimeout(()=>{b.textContent='적용';b.style.background='var(--purple)';},1200)" style="padding:3px 9px;font-size:11px;font-weight:600;border:none;border-radius:5px;background:var(--purple);color:#fff;cursor:pointer;font-family:var(--font);flex-shrink:0">적용</button>
       </div>
       ${v>0?`<div class="sup-display" style="margin-top:5px;font-size:11px;color:var(--hint);letter-spacing:0.2px">→ 공급가액 <strong style="color:var(--muted)">${fmtW(sup)}</strong></div>`:''}
     </div>`;
@@ -1778,22 +1798,38 @@ function bindLeftEvents(){
     const oid=e.target.dataset.oid,of_=e.target.dataset.of;
     if(oid&&of_&&of_!=='name'&&of_!=='amount'&&!IS_READONLY){const row=S.outs.find(r=>r.id==oid);if(!row)return;row[of_]=e.target.value;saveKey('outs');refreshOutsList();onCostChange();}
   });
+  // 인건비/외주비 input 이벤트 실시간 갱신
+  leftEl.addEventListener('input',e=>{
+    const lid=e.target.dataset.lid,lf=e.target.dataset.lf;
+    if(lid&&lf&&!IS_READONLY&&(lf==='count'||lf==='mm')){
+      const row=S.labor.find(r=>r.id==lid);if(!row)return;
+      if(lf==='count')row.count=Math.max(1,parseInt(e.target.value)||1);
+      else if(lf==='mm')row.mm=Math.max(0.1,parseFloat(e.target.value)||0.1);
+      // lbl_labor 즉시 갱신 (saveKey/refreshLaborList는 change에서)
+      setText('lbl_labor',fmtW(compute(S.bid).lc));
+    }
+  });
   leftEl.addEventListener('input',e=>{
     if(e.target.dataset.of==='name'&&!IS_READONLY){const row=S.outs.find(r=>r.id==e.target.dataset.oid);if(row){row.name=e.target.value;saveKey('outs');}}
   });
   leftEl.addEventListener('focus',e=>{if(e.target.dataset.of==='amount'){const n=parseComma(e.target.value);e.target.value=n===0?'':String(n);e.target.select();}},true);
   leftEl.addEventListener('input',e=>{
-    if(e.target.dataset.of==='amount'&&!IS_READONLY){const row=S.outs.find(r=>r.id==e.target.dataset.oid);if(!row)return;row.amount=Math.max(0,parseInt(e.target.value.replace(/[^\d]/g,''),10)||0);saveKey('outs');const wrap=e.target.closest('[data-outs-row]');if(wrap){const v=row.amount,sup=row.vatIncl?fl(v/1.1):v;let sd=wrap.querySelector('.sup-display');if(!sd){sd=document.createElement('div');sd.className='sup-display';sd.style.cssText='margin-top:5px;font-size:11px;color:var(--hint);letter-spacing:0.2px';wrap.appendChild(sd);}sd.innerHTML=v>0?`→ 공급가액 <strong style="color:var(--muted)">${fmtW(sup)}</strong>`:'';}onCostChange();}
+    if(e.target.dataset.of==='amount'&&!IS_READONLY){const row=S.outs.find(r=>r.id==e.target.dataset.oid);if(!row)return;row.amount=Math.max(0,parseInt(e.target.value.replace(/[^\d]/g,''),10)||0);saveKey('outs');const wrap=e.target.closest('[data-outs-row]');if(wrap){const v=row.amount,sup=row.vatIncl?fl(v/1.1):v;let sd=wrap.querySelector('.sup-display');if(!sd){sd=document.createElement('div');sd.className='sup-display';sd.style.cssText='margin-top:5px;font-size:11px;color:var(--hint);letter-spacing:0.2px';wrap.appendChild(sd);}sd.innerHTML=v>0?`→ 공급가액 <strong style="color:var(--muted)">${fmtW(sup)}</strong>`:'';}
+      // 공급가액 헤더 실시간 갱신
+      const r2=compute(S.bid);
+      setText('lbl_outs','공급가액 '+fmtW(r2.os+(r2.svc-(S.svc||0))));
+      onCostChange();}
   });
-  leftEl.addEventListener('blur',e=>{if(e.target.dataset.of==='amount'){const row=S.outs.find(r=>r.id==e.target.dataset.oid);if(row)e.target.value=fmtComma(row.amount);}},true);
+  leftEl.addEventListener('blur',e=>{if(e.target.dataset.of==='amount'){const row=S.outs.find(r=>r.id==e.target.dataset.oid);if(row){e.target.value=fmtComma(row.amount);const r3=compute(S.bid);setText('lbl_outs','공급가액 '+fmtW(r3.os+(r3.svc-(S.svc||0))));updateStickyKPI();}}},true);
 }
 
-function refreshLaborList(){setHTML('labor_list',buildLaborHTML());setText('lbl_labor',fmtW(compute(S.bid).lc));}
+function refreshLaborList(){setHTML('labor_list',buildLaborHTML());setText('lbl_labor',fmtW(compute(S.bid).lc));updateStickyKPI();}
 function refreshOutsList(){
   setHTML('outs_list',buildOutsHTML());
   const r=compute(S.bid);
   const allOutsTotal=r.os+r.svc-(S.svc||0); // os(외주비) + directTotal
   setText('lbl_outs','공급가액 '+fmtW(r.os+(r.svc-(S.svc||0))));
+  updateStickyKPI();
 }
 
 /* ============================================================
@@ -3310,10 +3346,15 @@ function bindActionBar(){
 /* ── 툴팁 위치 동적 계산 (화면 밖 방지) ── */
 document.addEventListener('mouseover',function(e){
   const wrap=e.target.closest('.tip-wrap');
-  if(!wrap)return;
+  if(!wrap){
+    // tip-wrap 밖으로 나가면 모든 팝업 닫기
+    return;
+  }
+  // 다른 모든 팝업 먼저 숨기기
+  document.querySelectorAll('.tip-box').forEach(b=>{if(b!==wrap.querySelector('.tip-box')){b.style.display='none';b.style.visibility='hidden';b.style.opacity='0';}});
   const box=wrap.querySelector('.tip-box');
   if(!box)return;
-  box.style.display='block';
+  box.style.display='block';box.style.visibility='visible';box.style.opacity='1';
   const iconRect=wrap.getBoundingClientRect();
   const bW=box.offsetWidth||240,bH=box.offsetHeight||80;
   const vW=window.innerWidth,vH=window.innerHeight;
@@ -3335,8 +3376,12 @@ document.addEventListener('mouseout',function(e){
   if(!wrap)return;
   if(!wrap.contains(e.relatedTarget)){
     const box=wrap.querySelector('.tip-box');
-    if(box)box.style.display='none';
+    if(box){box.style.display='none';box.style.visibility='hidden';box.style.opacity='0';}
   }
+},true);
+// 추가: 스크롤 시 모든 팝업 닫기
+document.addEventListener('scroll',function(){
+  document.querySelectorAll('.tip-box').forEach(b=>{b.style.display='none';b.style.visibility='hidden';b.style.opacity='0';});
 },true);
 
 /* ── left 스크롤 → kpi-sticky shadow ── */
