@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>d'strict B2G Simulator Vol.1.3</title>
-<meta property="og:title" content="d'strict B2G Simulator Vol.1.3">
+<title>d'strict B2G Simulator Vol.1.3.1</title>
+<meta property="og:title" content="d'strict B2G Simulator Vol.1.3.1">
 <meta property="og:url" content="https://shin3164.github.io/dstrict-dx-b2g-simulator/">
 <meta property="og:description" content="d'strict B2G 전략 예산 시뮬레이터 — 공공사업 투찰율·손익 분석 도구">
 <style>
@@ -546,7 +546,7 @@ body.readonly .icon-btn{pointer-events:none;opacity:.4}
 /* ── 외주비 항목 행 정렬 ── */
 .outs-row-inner{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 
-/* ── UX 개선 Vol.1.3 ── */
+/* ── UX 개선 Vol.1.3.1 ── */
 
 /* 좌측 스크롤 시 결과 고정 */
 #left{scroll-behavior:smooth}
@@ -633,7 +633,7 @@ button:has(.vat-btn) + button:hover{opacity:.9;transform:scale(.98)}
       <div class="tb-logo-mark">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
       </div>
-      <span class="tb-name">d'strict B2G Simulator <span style='font-size:10px;font-weight:400;opacity:.7'>Vol.1.3</span></span>
+      <span class="tb-name">d'strict B2G Simulator <span style='font-size:10px;font-weight:400;opacity:.7'>Vol.1.3.1</span></span>
     </div>
     <!-- 네비게이션 메뉴 -->
     <div id="tb-nav" style="display:flex;align-items:center;gap:2px;margin-left:12px">
@@ -691,7 +691,7 @@ button:has(.vat-btn) + button:hover{opacity:.9;transform:scale(.98)}
         <div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;background:var(--purple);margin-bottom:14px">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         </div>
-        <h1 style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin-bottom:6px">d'strict B2G Simulator Vol.1.3</h1>
+        <h1 style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin-bottom:6px">d'strict B2G Simulator Vol.1.3.1</h1>
         <p style="font-size:13px;color:var(--muted);letter-spacing:0.2px">2026 KOSA 노임단가 기준 · SW사업 대가산정 가이드(2025 개정판)</p>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="home-menu-grid">
@@ -2060,21 +2060,85 @@ function buildTabHTML(res,scr){
   return buildAuditHTML(res);
 }
 
+
+/* ── M/M 구성비 차트 HTML 빌더 ── */
+function buildMMChartHTML(){
+  if(!S.labor||!S.labor.length) return '';
+  const mms=getMMs();
+  const totalMM=S.labor.reduce((s,r)=>s+r.count*r.mm,0);
+  if(totalMM===0) return '';
+
+  // 직군별 집계
+  const roles={};
+  S.labor.forEach(r=>{
+    const robj=ROLES.find(x=>x.id===(r.role||'dev'))||ROLES[4];
+    const mm=r.count*r.mm;
+    if(!roles[r.role])roles[r.role]={label:robj.label,mm:0,lc:0,rows:[]};
+    roles[r.role].mm+=mm;
+    roles[r.role].lc+=fl(mms[r.grade].mm*r.count*r.mm);
+    roles[r.role].rows.push(r);
+  });
+
+  const RCOLS=['#185FA5','#534AB7','#0F6E56','#993C1D','#0F6E8A','#6B3FA0','#E67E22','#854F0B'];
+  const roleList=Object.entries(roles);
+
+  const bars=roleList.map(([rid,d],i)=>{
+    const pct=totalMM>0?(d.mm/totalMM)*100:0;
+    const col=RCOLS[i%RCOLS.length];
+    // 투입 인원/기간 상세
+    const detail=roles[rid].rows.map(r=>{
+      const robj=ROLES.find(x=>x.id===(r.role||'dev'))||ROLES[4];
+      return `${GD[r.grade]?.label||r.grade} ${r.count}명 × ${r.mm}MM`;
+    }).join(', ');
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+        <span style="font-size:12px;font-weight:600;color:var(--text)">${d.label}</span>
+        <span style="font-size:11px;color:var(--muted)">${d.mm.toFixed(1)}MM <span style="color:var(--hint);font-weight:400">(${pct.toFixed(1)}%)</span></span>
+      </div>
+      <div style="height:10px;border-radius:5px;background:var(--border);overflow:hidden">
+        <div style="height:100%;border-radius:5px;background:${col};width:${pct.toFixed(1)}%;transition:width .4s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--hint);margin-top:3px">${detail}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="sc" style="margin-bottom:12px">
+    <div class="sc-head">
+      <span class="sc-title">M/M 구성비</span>
+      <span style="font-size:11px;color:var(--blue);font-weight:700">총 ${totalMM.toFixed(1)}MM / ${S.labor.length}명</span>
+    </div>
+    <div class="sc-body">
+      ${bars}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        ${roleList.map(([rid,d],i)=>`<span style="display:flex;align-items:center;gap:4px;font-size:11px">
+          <span style="width:7px;height:7px;border-radius:50%;background:${RCOLS[i%RCOLS.length]};display:inline-block"></span>
+          <span style="color:var(--muted)">${d.label}</span>
+          <strong style="color:var(--text)">${d.mm.toFixed(1)}MM</strong>
+          <span style="color:var(--hint)">${totalMM>0?((d.mm/totalMM)*100).toFixed(0):0}%</span>
+        </span>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
 function buildDashboardHTML(res){
   const totalCost=res.rv;
   const costSegs=[{name:'직접비',v:fl(res.os),c:'#534AB7'},{name:'직접경비',v:fl(res.svc),c:'#854F0B'},{name:'운영경비',v:fl(res.opex),c:'#E67E22'},{name:'내부인건비',v:fl(res.lc),c:'#185FA5'},{name:'공헌이익',v:Math.max(0,fl(res.cn)),c:'#3B6D11'}].filter(d=>d.v>0);
-  // catData: 입력된 카테고리별 실제 외주비 집계 (모든 카테고리 표시)
-  const catData=OCATS.map(cat=>{
+  // catData: 직접비(외주비) 카테고리별 집계 (group==='direct'만)
+  const DIRECT_IDS=OCATS.filter(c=>c.group==='direct').map(c=>c.id);
+  const catData=OCATS.filter(c=>c.group==='direct').map(cat=>{
     const t=S.outs.filter(r=>r.catId===cat.id).reduce((s,r)=>{const v=Math.max(0,parseFloat(r.amount)||0);return s+(r.vatIncl?fl(v/1.1):v);},0);
     return{name:cat.label,v:t,color:cat.color};
-  }).filter(d=>d.v>0);  // 값 없는 카테고리 제외 → 바차트 공간 최적화
-  // 서버/기타 고정비(S.svc)가 있으면 별도 표시
-  if(S.svc>0)catData.push({name:'서버/기타(고정)',v:S.svc,color:'#73726c'});
+  }).filter(d=>d.v>0);
+  // 직접경비 집계 (direct_exp catId)
+  const svcData=S.outs.filter(r=>r.catId==='direct_exp').reduce((s,r)=>{const v=Math.max(0,parseFloat(r.amount)||0);return s+(r.vatIncl?fl(v/1.1):v);},0)+(S.svc||0);
+  // 운영경비 집계 (opex catId)
+  const opexData=S.outs.filter(r=>r.catId==='opex').reduce((s,r)=>{const v=Math.max(0,parseFloat(r.amount)||0);return s+(r.vatIncl?fl(v/1.1):v);},0);
   const linePts=[];for(let r=70;r<=100;r+=0.5)linePts.push({x:r,y:+compute(r).mg.toFixed(2)});
   const markPts=[...SC_DEF.map(s=>({x:S.sc[s.key],color:s.color,r:5})),{x:S.bid,color:'#185FA5',r:7}];
 
   return`
-    <!-- 비용구조 + 외주비 카테고리 -->
+    ${buildMMChartHTML()}
+    <!-- 비용구조 + 비용 구조 -->
     <div class="chart-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="sc" style="margin:0">
         <div class="sc-head">
@@ -2103,13 +2167,27 @@ function buildDashboardHTML(res){
         </div>
       </div>
       <div class="sc" style="margin:0">
-        <div class="sc-head">
-          <span class="sc-title">직접비 / 외주비 카테고리</span>
-          <span style="font-size:11px;color:var(--purple);font-weight:700">전체 ${fmtW(catData.reduce((s,d)=>s+d.v,0))}</span>
+        <div class="sc-head" style="flex-direction:column;align-items:flex-start;gap:4px">
+          <span class="sc-title">직접비(외주비) / 직접경비 / 운영경비 비용 구조</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;color:#534AB7;font-weight:600">직접비 ${fmtW(res.os)}</span>
+            <span style="font-size:11px;color:#854F0B;font-weight:600">직접경비 ${fmtW(res.svc)}</span>
+            <span style="font-size:11px;color:#E67E22;font-weight:600">운영경비 ${fmtW(res.opex)}</span>
+          </div>
         </div>
         <div class="sc-body">
           ${makeBarSVG(catData,200)}
-          ${(()=>{const tot2=catData.reduce((s,d)=>s+d.v,0);const items=catData.filter(d=>d.v>0);if(!items.length)return'';return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'+items.map(d=>'<span style="display:flex;align-items:center;gap:4px;font-size:11px"><span style="width:7px;height:7px;border-radius:1px;background:'+d.color+';display:inline-block"></span><span style="color:var(--muted)">'+d.name+'</span><strong style="color:var(--text)">'+fmtW(d.v)+'</strong><span style="color:var(--hint)">'+(tot2>0?((d.v/tot2)*100).toFixed(0):'0')+'%</span></span>').join('')+'</div>';})()}
+          ${(()=>{
+            const totalAll=res.os+res.svc+res.opex;
+            const allItems=[
+              ...catData.map(d=>({...d,group:'직접비'})),
+              ...(svcData>0?[{name:'직접경비',v:svcData,color:'#854F0B',group:'직접경비'}]:[]),
+              ...(opexData>0?[{name:'운영경비',v:opexData,color:'#E67E22',group:'운영경비'}]:[])
+            ];
+            if(!allItems.length)return'';
+            return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'+
+              allItems.map(d=>'<span style="display:flex;align-items:center;gap:4px;font-size:11px"><span style="width:7px;height:7px;border-radius:1px;background:'+d.color+';display:inline-block"></span><span style="color:var(--muted)">'+d.name+'</span><strong style="color:var(--text)">'+fmtW(d.v)+'</strong><span style="color:var(--hint)">'+(totalAll>0?((d.v/totalAll)*100).toFixed(0):'0')+'%</span></span>').join('')+'</div>';
+          })()}
         </div>
       </div>
     </div>
@@ -2269,7 +2347,7 @@ function buildExcel(){
   const N=v=>typeof v==='number'?v.toLocaleString('ko-KR'):'';
   const P=v=>typeof v==='number'?v.toFixed(2)+'%':'';
   const rows=[];
-  rows.push(["d'strict B2G Simulator Vol.1.3","","생성:",new Date().toLocaleString('ko-KR')]);
+  rows.push(["d'strict B2G Simulator Vol.1.3.1","","생성:",new Date().toLocaleString('ko-KR')]);
   rows.push(["프로젝트명",S.projectName||"(미입력)"]);
   rows.push([]);
   rows.push(["[투찰 정보]"]);
@@ -2311,7 +2389,7 @@ function buildWordReport(){
   const sep='='.repeat(50);
   const lines=[
     sep,
-    "  d'strict B2G Simulator Vol.1.3",
+    "  d'strict B2G Simulator Vol.1.3.1",
     "  공공사업 예산 분석 보고서",
     sep,
     "프로젝트명: "+(S.projectName||"(미입력)"),
@@ -2351,7 +2429,7 @@ function buildWordReport(){
     "",
     sep,
     "d'strict 2026년 노임단가 기준 · 원 단위 미만 절삭",
-    "d'strict B2G Simulator Vol.1.3",
+    "d'strict B2G Simulator Vol.1.3.1",
     sep,
   ];
   return '﻿'+lines.join('\r\n');
@@ -2360,7 +2438,7 @@ function buildWordReport(){
 function buildPPTNotes(){
   const r=compute(S.bid),mms=getMMs();
   const lines=[
-    "━━━ PPT 발표 노트 — d'strict B2G Simulator Vol.1.3 ━━━",
+    "━━━ PPT 발표 노트 — d'strict B2G Simulator Vol.1.3.1 ━━━",
     "",
     "【슬라이드 1: 프로젝트 개요】",
     "- 프로젝트명: "+(S.projectName||"(미입력)"),
@@ -2389,7 +2467,7 @@ function buildPPTNotes(){
     "- 현재 투찰율 "+S.bid.toFixed(2)+"%: 영업이익 "+fmtW(r.op)+" / 이익률 "+r.mg.toFixed(2)+"%",
     "",
     ...(S.memo?["【슬라이드 6: 특이사항】",S.memo,""]:[]),
-    "━━━ d'strict 2026년 노임단가 기준 · d'strict B2G Simulator Vol.1.3 ━━━",
+    "━━━ d'strict 2026년 노임단가 기준 · d'strict B2G Simulator Vol.1.3.1 ━━━",
   ];
   return '﻿'+lines.join('\r\n');
 }
@@ -3158,7 +3236,7 @@ function exportCompareXLSX(){
   const acct=v=>typeof v==='number'?v.toLocaleString('ko-KR'):'';
   const pct=v=>typeof v==='number'?v.toFixed(2)+'%':'';
   const rows=[];
-  rows.push(["d'strict B2G Simulator Vol.1.3 — 프로젝트 비교 분석","","","생성:",new Date().toLocaleString('ko-KR')]);
+  rows.push(["d'strict B2G Simulator Vol.1.3.1 — 프로젝트 비교 분석","","","생성:",new Date().toLocaleString('ko-KR')]);
   rows.push(["선택 프로젝트",...projects.map(p=>p.name)]);
   rows.push(["분석 일시",...projects.map(p=>p.ts)]);
   rows.push([]);
@@ -3199,7 +3277,6 @@ function exportCompareJSON(){exportCompareXLSX();}
 function captureSnapshot(fmt){
   if(!BASELINE){
     if(!confirm('변경 적용이 되지 않은 상태입니다.\n현재 입력값으로 저장하시겠습니까?'))return;
-    // 임시 계산으로 저장
     autoSetScenarios();
     BASELINE=snapshotResult();
     const btn=document.getElementById('btn-confirm');
@@ -3209,89 +3286,142 @@ function captureSnapshot(fmt){
   }
   const r=compute(S.bid);
   const mms=getMMs();
-  const W=800,H=520;
+
+  // ── 1920×1080 캔버스 ──
+  const W=1920, H=1080;
+  const PAD=48, HDR=72;
   const cv=document.createElement('canvas');
-  cv.width=W;cv.height=H;
+  cv.width=W; cv.height=H;
   const ctx=cv.getContext('2d');
 
-  // 배경
-  ctx.fillStyle='#f6f5f0';ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#fff';
-  roundRect(ctx,20,20,W-40,H-40,12);ctx.fill();
+  // 헬퍼
+  const rr=(x,y,w,h,rad)=>roundRect(ctx,x,y,w,h,rad);
+  const txt=(t,x,y,font,col,align='left')=>{
+    ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align;
+    ctx.fillText(t,x,y); ctx.textAlign='left';
+  };
+  const cnColor=r.cn>=0?(r.cnr>=20?'#00B050':'#CC9900'):'#C00000';
+  const gpColor=r.gp>=0?'#00B050':'#C00000';
 
-  // 헤더 바
-  ctx.fillStyle='#1a1a18';roundRect(ctx,20,20,W-40,52,{tl:12,tr:12,bl:0,br:0});ctx.fill();
-  ctx.fillStyle='#fff';ctx.font='700 15px "Pretendard Variable",Arial,sans-serif';
-  ctx.fillText("d'strict B2G Simulator Vol.1.3",40,52);
-  ctx.fillStyle='rgba(255,255,255,.5)';ctx.font='400 11px Arial';
-  ctx.fillText(S.projectName||'프로젝트',40,68);
-  ctx.fillText(new Date().toLocaleDateString('ko-KR'),W-120,52);
+  // ── 배경 ──
+  ctx.fillStyle='#f6f5f0'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#fff'; rr(PAD,PAD,W-PAD*2,H-PAD*2,16); ctx.fill();
 
-  // KPI 5개
+  // ── 헤더 바 ──
+  ctx.fillStyle='#1a1a18';
+  rr(PAD,PAD,W-PAD*2,HDR,{tl:16,tr:16,bl:0,br:0}); ctx.fill();
+  txt("d'strict B2G Simulator Vol.1.3.1", PAD+28, PAD+30, '700 22px Arial','#fff');
+  txt(S.projectName||'프로젝트 미지정', PAD+28, PAD+56, '400 15px Arial','rgba(255,255,255,.55)');
+  txt(new Date().toLocaleDateString('ko-KR'), W-PAD-28, PAD+42, '400 14px Arial','rgba(255,255,255,.55)','right');
+  const bidLabel='투찰율 '+S.bid.toFixed(2)+'%';
+  txt(bidLabel, W-PAD-28, PAD+62, '600 14px Arial','rgba(255,255,255,.8)','right');
+
+  // ── KPI 카드 6개 ──
   const kpis=[
-    {label:'투찰금액',value:fmtW(r.ct),sub:'투찰 '+S.bid.toFixed(2)+'%'},
-    {label:'공급가액',value:fmtW(r.rv),sub:'VAT 제외'},
-    {label:'총 변동비',value:fmtW(r.dt),sub:''},
-    {label:'영업이익',value:fmtW(r.op),sub:''},
-    {label:'이익률',value:r.mg.toFixed(2)+'%',sub:r.mg>=10?'목표 달성':r.mg>=0?'마진 주의':'적자'},
+    {label:'투찰금액',       value:fmtW(r.ct),            sub:'VAT포함', col:'#1a1a18', bg:'#f6f5f0', bdr:'#e8e6df'},
+    {label:'매출액',         value:fmtW(r.rv),            sub:'VAT별도', col:'#185FA5', bg:'#E6F1FB', bdr:'#b5d4f4'},
+    {label:'직접비(외주비)', value:fmtW(r.os),            sub:'외주 직접', col:'#534AB7', bg:'#EEEDFE', bdr:'#c4b5fd'},
+    {label:'직접경비+운영',  value:fmtW(r.svc+r.opex),   sub:'경비 합계', col:'#854F0B', bg:'#FAEEDA', bdr:'#f0d9a0'},
+    {label:'공헌이익',       value:fmtW(r.cn),            sub:r.cnr.toFixed(2)+'%', col:cnColor, bg:r.cn>=0?'#EAF3DE':'#FCEBEB', bdr:r.cn>=0?'#c0dd97':'#f5b7b7'},
+    {label:'공헌이익률',     value:r.cnr.toFixed(2)+'%', sub:r.cnr>=20?'✓ 목표':r.cn>=0?'△ 주의':'✕ 적자', col:cnColor, bg:r.cn>=0?'#EAF3DE':'#FCEBEB', bdr:r.cn>=0?'#c0dd97':'#f5b7b7'},
   ];
-  const kw=140,kg=8,kx0=40,ky=88;
+  const ky=PAD+HDR+20, kh=100, kgap=12;
+  const kw=Math.floor((W-PAD*2-kgap*5)/6);
   kpis.forEach((k,i)=>{
-    const x=kx0+i*(kw+kg);
-    const mgOk=r.mg>=10;
-    ctx.fillStyle=i>=3?(mgOk?'#EAF3DE':r.mg>=0?'#FAEEDA':'#FCEBEB'):'#f6f5f0';
-    roundRect(ctx,x,ky,kw,72,8);ctx.fill();
-    ctx.strokeStyle=i>=3?(mgOk?'#c0dd97':r.mg>=0?'#f0d9a0':'#f5b7b7'):'#e8e6df';
-    ctx.lineWidth=1;roundRect(ctx,x,ky,kw,72,8);ctx.stroke();
-    ctx.fillStyle='#73726c';ctx.font='500 10px Arial';ctx.fillText(k.label,x+10,ky+17);
-    const col=i>=3?(mgOk?'#00B050':r.mg>=0?'#CC9900':'#FF0000'):i===1?'#185FA5':'#1a1a18';
-    ctx.fillStyle=col;ctx.font='700 16px Arial';ctx.fillText(k.value,x+10,ky+40);
-    ctx.fillStyle='#a3a29c';ctx.font='400 10px Arial';ctx.fillText(k.sub,x+10,ky+58);
+    const x=PAD+i*(kw+kgap);
+    ctx.fillStyle=k.bg; rr(x,ky,kw,kh,10); ctx.fill();
+    ctx.strokeStyle=k.bdr; ctx.lineWidth=1.5; rr(x,ky,kw,kh,10); ctx.stroke();
+    txt(k.label,  x+16, ky+22, '500 13px Arial','#73726c');
+    txt(k.value,  x+16, ky+58, '700 22px Arial', k.col);
+    txt(k.sub,    x+16, ky+82, '400 13px Arial','#a3a29c');
   });
 
-  // 손익 테이블
-  const ty=185,th=22,rows2=[
-    ['투찰금액',fmtW(r.ct)],['공급가액',fmtW(r.rv)],
-    ['(-) 인건비','-'+fmtW(r.lc)],['(-) 외주비','-'+fmtW(r.os)],
-    ['(-) 서버/기타','-'+fmtW(r.svc)],['공헌이익',fmtW(r.cn)],
-    ['(-) 간접비','-'+fmtW(r.ic)],['영업이익',fmtW(r.op)],
-    ['이익률',r.mg.toFixed(2)+'%'],
+  // ── 2단 레이아웃 시작 Y ──
+  const BY=ky+kh+28;
+  const colGap=28;
+  const col1W=580, col2W=580, col3W=W-PAD*2-col1W-col2W-colGap*2;
+
+  // ══ 컬럼 1: 손익계산서 ══
+  const c1x=PAD;
+  txt('손익 계산서', c1x, BY+16, '700 16px Arial','#1a1a18');
+  // 손익 행 — 새 공식 반영
+  const pnlRows=[
+    {label:'투찰금액 (VAT포함)', val:fmtW(r.ct),  bold:false, col:'#73726c'},
+    {label:'매출액 (VAT별도)',   val:fmtW(r.rv),   bold:true,  col:'#185FA5'},
+    {label:'(-) 직접비(외주비)', val:'-'+fmtW(r.os),  bold:false, col:'#534AB7'},
+    {label:'(-) 직접경비',       val:'-'+fmtW(r.svc), bold:false, col:'#854F0B'},
+    {label:'(-) 운영경비',       val:'-'+fmtW(r.opex),bold:false, col:'#E67E22'},
+    {label:'공헌이익',           val:fmtW(r.cn),   bold:true,  col:cnColor,  sep:true},
+    {label:'공헌이익률',         val:r.cnr.toFixed(2)+'%', bold:true, col:cnColor},
+    {label:'(-) 내부인건비',     val:'-'+fmtW(r.lc),  bold:false, col:'#73726c', sep:true},
+    {label:'매출총이익',         val:fmtW(r.gp),   bold:true,  col:gpColor,  sep:false},
+    {label:'매출총이익률',       val:r.gpr.toFixed(2)+'%', bold:true, col:gpColor},
   ];
-  ctx.fillStyle='#1a1a18';ctx.font='700 11px Arial';
-  ctx.fillText('손익 계산서',40,ty-8);
-  rows2.forEach((row,i)=>{
-    const y=ty+i*th;
+  const th=30, ty2=BY+28;
+  pnlRows.forEach((row,i)=>{
+    const y=ty2+i*th;
+    if(row.sep&&i>0){ctx.strokeStyle='#e8e6df';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(c1x,y-4);ctx.lineTo(c1x+col1W,y-4);ctx.stroke();}
     ctx.fillStyle=i%2===0?'#fff':'#faf9f7';
-    ctx.fillRect(40,y,340,th);
-    const isBold=i===5||i===7||i===8;
-    ctx.fillStyle=isBold?'#1a1a18':'#73726c';
-    ctx.font=(isBold?'600':'400')+' 12px Arial';
-    ctx.fillText(row[0],52,y+15);
-    const valCol=i===7?(r.op>=0?'#00B050':'#FF0000'):i===8?(r.mg>=10?'#00B050':r.mg>=0?'#CC9900':'#FF0000'):'#1a1a18';
-    ctx.fillStyle=valCol;ctx.font=(isBold?'700':'400')+' 12px Arial';
-    const tw2=ctx.measureText(row[1]).width;
-    ctx.fillText(row[1],380-tw2,y+15);
+    ctx.fillRect(c1x,y,col1W,th);
+    const fw=row.bold?'600':'400';
+    txt(row.label, c1x+14, y+20, fw+' 14px Arial','#73726c');
+    ctx.font=fw+' 14px Arial';
+    const vw=ctx.measureText(row.val).width;
+    txt(row.val, c1x+col1W-14-vw, y+20, fw+' 14px Arial', row.col);
   });
 
-  // 인건비 상세
-  const lx=420,lw=340;
-  ctx.fillStyle='#1a1a18';ctx.font='700 11px Arial';ctx.fillText('투입 인력',lx,ty-8);
-  S.labor.slice(0,8).forEach((lr,i)=>{
-    const g=mms[lr.grade];const sub=fl(g.mm*lr.count*lr.mm);
-    const y=ty+i*th;
-    ctx.fillStyle=i%2===0?'#fff':'#faf9f7';ctx.fillRect(lx,y,lw,th);
-    ctx.fillStyle='#73726c';ctx.font='400 11px Arial';
-    const role=(ROLES.find(r=>r.id===(lr.role||'dev'))||ROLES[4]).label;
-    ctx.fillText(GD[lr.grade].label+' '+role+' '+lr.count+'명×'+lr.mm+'MM',lx+10,y+15);
-    ctx.fillStyle='#1a1a18';const tw3=ctx.measureText(fmtW(sub)).width;
-    ctx.fillText(fmtW(sub),lx+lw-tw3-8,y+15);
+  // ══ 컬럼 2: 투입 인력 ══
+  const c2x=PAD+col1W+colGap;
+  txt('투입 인력', c2x, BY+16, '700 16px Arial','#1a1a18');
+  // 총 M/M
+  const totalMM=S.labor.reduce((s,lr)=>s+lr.count*lr.mm,0);
+  txt('총 '+totalMM.toFixed(1)+'MM', c2x+col2W-14, BY+16, '600 13px Arial','#185FA5','right');
+  const laborRows=S.labor.slice(0,14);
+  laborRows.forEach((lr,i)=>{
+    const g=mms[lr.grade];
+    const sub=fl(g.mm*lr.count*lr.mm);
+    const y=ty2+i*th;
+    ctx.fillStyle=i%2===0?'#fff':'#faf9f7';
+    ctx.fillRect(c2x,y,col2W,th);
+    const role=(ROLES.find(rx=>rx.id===(lr.role||'dev'))||ROLES[4]).label;
+    const gradeLabel=GD[lr.grade]?GD[lr.grade].label:lr.grade;
+    txt(`${gradeLabel} ${role}  ${lr.count}명 × ${lr.mm}MM`, c2x+14, y+20, '400 14px Arial','#73726c');
+    const vw2=ctx.measureText(fmtW(sub)).width;
+    txt(fmtW(sub), c2x+col2W-14-vw2, y+20, '600 14px Arial','#1a1a18');
   });
+  if(laborRows.length<S.labor.length){
+    txt(`외 ${S.labor.length-laborRows.length}명 더...`, c2x+14, ty2+laborRows.length*th+16, '400 12px Arial','#a3a29c');
+  }
 
-  // 푸터
-  ctx.fillStyle='#a3a29c';ctx.font='400 10px Arial';
-  ctx.fillText("d'strict 2026년 노임단가 기준 · 원 단위 미만 절삭 · d'strict B2G Simulator",40,H-22);
+  // ══ 컬럼 3: 외주 직접비 상세 ══
+  const c3x=PAD+col1W+col2W+colGap*2;
+  txt('직접비(외주비) / 직접경비 / 운영경비', c3x, BY+16, '700 16px Arial','#1a1a18');
+  const outsData=S.outs.slice(0,14);
+  outsData.forEach((ot,i)=>{
+    const v=parseFloat(ot.amount)||0;
+    const sup=ot.vatIncl?fl(v/1.1):v;
+    const cat=OCATS.find(c=>c.id===ot.catId)||{label:ot.catId,color:'#73726c'};
+    const y=ty2+i*th;
+    ctx.fillStyle=i%2===0?'#fff':'#faf9f7';
+    ctx.fillRect(c3x,y,col3W,th);
+    // 카테고리 색상 도트
+    ctx.fillStyle=cat.color;
+    ctx.beginPath();ctx.arc(c3x+12,y+15,4,0,Math.PI*2);ctx.fill();
+    const nameStr=ot.name?`${cat.label} - ${ot.name}`:cat.label;
+    txt(nameStr, c3x+24, y+20, '400 13px Arial','#73726c');
+    const sw=ctx.measureText(fmtW(sup)).width;
+    txt(fmtW(sup), c3x+col3W-14-sw, y+20, '600 13px Arial','#1a1a18');
+  });
+  if(outsData.length<S.outs.length){
+    txt(`외 ${S.outs.length-outsData.length}건 더...`, c3x+14, ty2+outsData.length*th+16, '400 12px Arial','#a3a29c');
+  }
 
-  // 다운로드
+  // ── 푸터 ──
+  ctx.fillStyle='#e8e6df'; ctx.fillRect(PAD,H-PAD-20,W-PAD*2,1);
+  txt("d'strict 2026년 노임단가 기준 · 원 단위 미만 절삭 · d'strict B2G Simulator Vol.1.3.1",
+    PAD+8, H-PAD-5, '400 13px Arial','#a3a29c');
+
+  // ── 다운로드 ──
   const mime=fmt==='jpeg'?'image/jpeg':'image/png';
   const ext=fmt==='jpeg'?'jpg':'png';
   cv.toBlob(blob=>{
