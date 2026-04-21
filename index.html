@@ -973,28 +973,30 @@ const GCOLS={S:'#A32D2D',A:'#854F0B',B:'#185FA5',C:'#3B6D11'};
 function tip(text){
   return `<span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-box">${text}</span></span>`;
 }
-const OCATS=[{id:'contents',label:'콘텐츠',color:'#534AB7'},{id:'hardware',label:'하드웨어',color:'#185FA5'},{id:'interior',label:'인테리어',color:'#0F6E56'},{id:'construct',label:'건축/시공',color:'#993C1D'},{id:'system',label:'시스템',color:'#0F6E8A'},{id:'dev',label:'개발',color:'#6B3FA0'},{id:'opex',label:'운영경비',color:'#E67E22'}];
+const OCATS=[{id:'contents',  label:'콘텐츠',    color:'#534AB7', group:'direct'},{id:'hardware',  label:'하드웨어',  color:'#185FA5', group:'direct'},{id:'interior',  label:'인테리어',  color:'#0F6E56', group:'direct'},{id:'construct', label:'건축/시공', color:'#993C1D', group:'direct'},{id:'system',    label:'시스템',    color:'#0F6E8A', group:'direct'},{id:'dev',       label:'개발',      color:'#6B3FA0', group:'direct'},{id:'direct_exp',label:'직접경비',  color:'#854F0B', group:'expense'},{id:'opex',      label:'운영경비',  color:'#E67E22', group:'opex'}];
 const OPEX_CATS=[{id:'travel',label:'여비교통비',color:'#185FA5'},{id:'meal',label:'식대/간식/회식',color:'#E67E22'},{id:'entertain',label:'접대비',color:'#993C1D'},{id:'supply',label:'소모품/비품',color:'#0F6E56'},{id:'etc_direct',label:'기타직접비',color:'#73726c'}];
 const SC_DEF=[{key:'worst',label:'Worst',color:'#A32D2D'},{key:'avg',label:'Average',color:'#854F0B'},{key:'best',label:'Best',color:'#3B6D11'}];
 const DAILY_DEF={S:568663,A:427566,B:336666,C:302999};
 const PNL_DEFS=[
-  {label:'투찰금액 (VAT포함)', key:'ct',  indent:false, bold:false,
+  {label:'투찰금액 (VAT포함)', key:'ct',   indent:false, bold:false,
    tip:'기초금액 × 투찰율. 발주기관에 제출하는 최종 입찰가격(VAT 포함).'},
-  {label:'매출액 (VAT별도)',   key:'rv',  indent:false, bold:true,
+  {label:'매출액 (VAT별도)',   key:'rv',   indent:false, bold:true,
    tip:'투찰금액 ÷ 1.1. 부가세 별도 실제 매출액. 공헌이익 계산의 기준.'},
-  {label:'(-) 직접비',         key:'os',  indent:true,  neg:true,
-   tip:'외주 업체에 지급하는 콘텐츠·하드웨어·인테리어·시스템·개발 등 VAT별도 금액.'},
-  {label:'(-) 직접경비',       key:'svc', indent:true,  neg:true,
-   tip:'서버 운영비, 유지관리비 등 사업에 직접 투입되는 경비.'},
-  {label:'공헌이익',           key:'cn',  indent:false, bold:true, sep:true, accent:true,
-   tip:'매출액 − 직접비 − 직접경비. d&#39;strict의 핵심 수익성 지표.'},
-  {label:'공헌이익률',         key:'cnr', indent:false, bold:true, pct:true,
-   tip:'공헌이익 ÷ 매출액 × 100(%). 높을수록 수익성이 우수.'},
-  {label:'(+) 인건비',         key:'lc',  indent:true,  bold:false, addBack:true,
-   tip:'내부 투입 인건비. 공헌이익에 합산하여 매출총이익을 산출합니다.'},
-  {label:'매출총이익',         key:'gp',  indent:false, bold:true, sep:true,
-   tip:'공헌이익 + 인건비. 직접비와 직접경비만 차감한 총이익.'},
-  {label:'매출총이익률',       key:'gpr', indent:false, bold:true, pct:true,
+  {label:'(-) 직접비(외주비)', key:'os',   indent:true,  neg:true,
+   tip:'턴키 방식 외주업체 견적 총액. 콘텐츠·하드웨어·인테리어·건축·시스템·개발 등 VAT별도.'},
+  {label:'(-) 직접경비',       key:'svc',  indent:true,  neg:true,
+   tip:'과업지시서상 필수 실비용. 유동인구 분석, 보고회 운영 등 별도 발생 경비.'},
+  {label:'(-) 운영경비',       key:'opex', indent:true,  neg:true,
+   tip:'프로젝트 수행 중 발생 제반 비용. 여비교통비, 기타직접비, 식대/간식대/회식대/접대비 등.'},
+  {label:'공헌이익',           key:'cn',   indent:false, bold:true, sep:true, accent:true,
+   tip:'매출액 − 직접비(외주비) − 직접경비 − 운영경비. d&#39;strict의 핵심 수익성 지표.'},
+  {label:'공헌이익률',         key:'cnr',  indent:false, bold:true, pct:true,
+   tip:'공헌이익 ÷ 매출액 × 100(%).'},
+  {label:'(-) 내부인건비',     key:'lc',   indent:true,  neg:true,
+   tip:'d&#39;strict 내부 인건비. 공헌이익에서 차감하여 매출총이익을 산출합니다.'},
+  {label:'매출총이익',         key:'gp',   indent:false, bold:true, sep:true,
+   tip:'공헌이익 − 내부인건비.'},
+  {label:'매출총이익률',       key:'gpr',  indent:false, bold:true, pct:true,
    tip:'매출총이익 ÷ 매출액 × 100(%).'}
 ];/* ============================================================
    AUTH
@@ -1044,7 +1046,7 @@ function normalizeOutsData(){
   S.outs=S.outs.map(r=>({
     ...r,
     id:uid(),
-    catId:validCatIds.includes(r.catId)?r.catId:'contents',  // direct는 contents로 자동 전환
+    catId:validCatIds.includes(r.catId)?r.catId:'contents',
     amount:Math.max(0,parseFloat(r.amount)||0),
     vatIncl:!!r.vatIncl,
   }));
@@ -1170,21 +1172,23 @@ function compute(rate){
   const rv=S.baseVatIncl!==false?fl(ct/1.1):ct;
   const mms=getMMs();
   let lc=0;S.labor.forEach(r=>lc+=fl(mms[r.grade].mm*r.count*r.mm));
-  let os=0;
+  // catId 기준 3분류 집계
+  let os=0,svc_outs=0,opex=0;
   S.outs.forEach(r=>{
     const v=parseFloat(r.amount)||0;
     const sup=r.vatIncl?fl(v/1.1):v;
-    os+=sup;
+    if(r.catId==='direct_exp') svc_outs+=sup;      // 직접경비
+    else if(r.catId==='opex')  opex+=sup;           // 운영경비
+    else                        os+=sup;             // 직접비(외주비)
   });
-  const svc=(S.svc||0);              // 직접경비 (고정비)
-  const opex=0;                      // 운영경비 (별도 섹션 제거됨)
-  const dt=os+svc;                   // 총변동비 = 직접비 + 직접경비
-  const cn=rv-dt;                    // 공헌이익 = 매출 - 총변동비
+  const svc=svc_outs+(S.svc||0);                    // 직접경비 합계
+  const dt=os+svc+opex;                             // 총변동비
+  const cn=rv-dt;                                   // 공헌이익 = 매출 − 직접비 − 직접경비 − 운영경비
   const cnr=rv>0?(cn/rv)*100:0;
   const ic=0;
   const op=cn;
   const mg=cnr;
-  const gp=cn+lc;                    // 매출총이익 = 공헌이익 + 인건비
+  const gp=cn-lc;                                   // 매출총이익 = 공헌이익 − 내부인건비
   const gpr=rv>0?(gp/rv)*100:0;
   return{ct,rv,lc,os,svc,opex,dt,cn,cnr,gp,gpr,ic,op,mg};
 }
@@ -1633,7 +1637,7 @@ function buildLeft(){
 
     <div class="sc">
       <div class="sc-head clickable" onclick=\"toggleAcc('outs',event)\" style="display:flex;align-items:center;justify-content:space-between">
-        <span class="sc-title" style="display:flex;align-items:center;gap:3px">직접비 / 외주비 / 운영경비 ${tip('콘텐츠·하드웨어·인테리어·건축·시스템·개발 등 외주 직접비. 운영경비(여비교통비, 기타직접비, 식대/간식대/회식대/접대비 등)가 포함됩니다.')}</span>
+        <span class="sc-title" style="display:flex;align-items:center;gap:3px">직접비(외주비) / 직접경비 / 운영경비 ${tip('직접비(외주비): 외주 턴키 견적. 직접경비: 과업지시서 필수 실비용. 운영경비: 여비교통비·식대/간식대/회식대/접대비·기타직접비 등.')}</span>
         <div style="display:flex;align-items:center;gap:9px">
           <span id="lbl_outs" style="font-size:13px;color:var(--purple);font-weight:700;letter-spacing:-0.3px">직접비 ${fmtW(res.os)}</span>
           <button class="btn-cta" id="btn_add_outs" style="padding:4px 11px;font-size:11px;background:var(--purple);border-color:var(--purple)">+ 추가</button>
@@ -1773,7 +1777,15 @@ function buildOutsHTML(){
     return`<div class="outs-row" data-outs-row="${row.id}">
       <div style="display:flex;gap:5px;margin-bottom:7px;align-items:center">
         <select class="grade-sel" style="width:auto" data-of="catId" data-oid="${row.id}">
-          ${OCATS.map(c=>`<option value="${c.id}"${c.id===row.catId?' selected':''}>${c.label}</option>`).join('')}
+          <optgroup label="직접비(외주비)">
+            ${OCATS.filter(c=>c.group==='direct').map(c=>`<option value="${c.id}"${c.id===row.catId?' selected':''}>${c.label}</option>`).join('')}
+          </optgroup>
+          <optgroup label="직접경비">
+            ${OCATS.filter(c=>c.group==='expense').map(c=>`<option value="${c.id}"${c.id===row.catId?' selected':''}>${c.label}</option>`).join('')}
+          </optgroup>
+          <optgroup label="운영경비">
+            ${OCATS.filter(c=>c.group==='opex').map(c=>`<option value="${c.id}"${c.id===row.catId?' selected':''}>${c.label}</option>`).join('')}
+          </optgroup>
         </select>
         <input type="text" placeholder="항목명" value="${row.name||''}" data-of="name" data-oid="${row.id}" class="inp" style="flex:1;padding:6px 10px;font-size:12px" autocomplete="off">
         <button class="icon-btn" data-del-out="${row.id}" title="삭제">✕</button>
@@ -1875,7 +1887,7 @@ function refreshOutsList(){
   setHTML('outs_list',buildOutsHTML());
   const r=compute(S.bid);
   const allOutsTotal=r.os+r.svc-(S.svc||0); // os(외주비) + directTotal
-  setText('lbl_outs','공급가액 '+fmtW(r.os+(r.svc-(S.svc||0))));
+  setText('lbl_outs','합계 '+fmtW(r.os+r.svc+r.opex-(S.svc||0)));
   updateStickyKPI();
 }
 
@@ -1956,7 +1968,7 @@ function buildKPIHTML(res){
   return`
     <div class="kpi"><div class="kpi-label">투찰금액${tip('기초금액 × 투찰율. VAT 포함 최종 입찰가격.')}</div><div class="kpi-value">${fmtW(res.ct)}</div><div class="kpi-sub">투찰율 ${S.bid.toFixed(2)}%</div></div>
     <div class="kpi" style="background:var(--blue-bg);border-color:#b5d4f4"><div class="kpi-label">매출액${tip('투찰금액 ÷ 1.1. VAT별도 매출액.')}</div><div class="kpi-value" style="color:var(--blue)">${fmtW(res.rv)}</div><div class="kpi-sub">VAT별도</div></div>
-    <div class="kpi" style="background:var(--purple-bg);border-color:#c4b5fd"><div class="kpi-label">직접비${tip('직접비(외주) + 직접경비 합계.')}</div><div class="kpi-value" style="color:var(--purple)">${fmtW(res.os+res.svc)}</div><div class="kpi-sub">직접비 ${fmtW(res.os)}</div></div>
+    <div class="kpi" style="background:var(--purple-bg);border-color:#c4b5fd"><div class="kpi-label">직접비${tip('직접비(외주) + 직접경비 합계.')}</div><div class="kpi-value" style="color:var(--purple)">${fmtW(res.os+res.svc+res.opex)}</div><div class="kpi-sub">직접비 ${fmtW(res.os)}</div></div>
     <div class="kpi" style="background:${mgBg};border-color:${mgBdr}"><div class="kpi-label" style="display:flex;align-items:center;gap:3px">공헌이익${tip('공급가액 − 외주 − 직접경비. d&#39;strict 핵심 지표.')}</div><div class="kpi-value" style="color:${mgC}">${fmtW(res.cn)}</div></div>
     <div class="kpi" style="background:${mgBg};border-color:${mgBdr}">
       <div class="kpi-label" style="display:flex;align-items:center;gap:3px">공헌이익률${tip('공헌이익 ÷ 공급가액 × 100%.')}</div>
@@ -2010,7 +2022,7 @@ function buildScBodyHTML(scr){
   const rows=[
     {label:'투찰금액',    key:'ct'},
     {label:'매출액',      key:'rv'},
-    {label:'직접비',      key:'os'},
+    {label:'직접비(외주비)',key:'os'},
     {label:'직접경비',    key:'svc'},
     {label:'공헌이익',    key:'cn',  bold:true, sep:true, acc:true},
     {label:'공헌이익률',  key:'cnr', bold:true, pct:true},
@@ -2050,7 +2062,7 @@ function buildTabHTML(res,scr){
 
 function buildDashboardHTML(res){
   const totalCost=res.rv;
-  const costSegs=[{name:'외주',v:fl(res.os),c:'#534AB7'},{name:'직접경비',v:fl(res.svc),c:'#854F0B'},{name:'공헌이익',v:Math.max(0,fl(res.cn)),c:'#3B6D11'}].filter(d=>d.v>0);
+  const costSegs=[{name:'직접비',v:fl(res.os),c:'#534AB7'},{name:'직접경비',v:fl(res.svc),c:'#854F0B'},{name:'운영경비',v:fl(res.opex),c:'#E67E22'},{name:'내부인건비',v:fl(res.lc),c:'#185FA5'},{name:'공헌이익',v:Math.max(0,fl(res.cn)),c:'#3B6D11'}].filter(d=>d.v>0);
   // catData: 입력된 카테고리별 실제 외주비 집계 (모든 카테고리 표시)
   const catData=OCATS.map(cat=>{
     const t=S.outs.filter(r=>r.catId===cat.id).reduce((s,r)=>{const v=Math.max(0,parseFloat(r.amount)||0);return s+(r.vatIncl?fl(v/1.1):v);},0);
